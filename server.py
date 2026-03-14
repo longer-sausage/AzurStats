@@ -62,11 +62,10 @@ def init_queue_db():
 @app.post("/api/upload")
 async def upload_image(
     request: Request,
-    file: UploadFile = File(...), 
-    genre: str = Form(default="unknown"), 
-    device_id: str = Form(default="")
-):
-    """
+    file: UploadFile = File(...),
+    genre: str = Form(...),
+    device_id: str = Form(...)
+):  """
     接收 ALAS 客户端上传的截图
     """
     imgid = uuid.uuid4().hex[:16]
@@ -130,10 +129,10 @@ async def get_data(
             query = f"SELECT * FROM `azurstat_data`.`{table_name}` WHERE 1=1"
             params = []
             
-            if device_id and table_name == 'parse_records':
+            if device_id:
                 query += " AND device_id = %s"
                 params.append(device_id)
-            if genre and table_name == 'parse_records':
+            if genre:
                 query += " AND genre = %s"
                 params.append(genre)
             if server:
@@ -149,10 +148,10 @@ async def get_data(
             # Count total records
             count_query = f"SELECT COUNT(*) as total FROM `azurstat_data`.`{table_name}` WHERE 1=1"
             count_params = []
-            if device_id and table_name == 'parse_records':
+            if device_id:
                 count_query += " AND device_id = %s"
                 count_params.append(device_id)
-            if genre and table_name == 'parse_records':
+            if genre:
                 count_query += " AND genre = %s"
                 count_params.append(genre)
             if server:

@@ -254,3 +254,5 @@ adb_port.ini
 *.zip
 console.bat
 .vscode/*
+
+prod.yaml

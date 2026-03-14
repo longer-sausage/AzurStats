@@ -176,28 +176,23 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         # research_item
         table = inflection.underscore(scene)
 
-        if table == 'parse_records' and metadata:
+        if metadata:
             columns.extend(['device_id', 'genre'])
-            placeholders = ', '.join(['%s'] * len(columns))
-            columns_str = ', '.join(columns)
-            sql = f"""
+            
+        placeholders = ', '.join(['%s'] * len(columns))
+        columns_str = ', '.join(columns)
+        sql = f"""
         INSERT INTO `azurstat_data`.`{table}` ({columns_str})
         VALUES ({placeholders})
         """
-            batch = []
-            for data in data_list:
-                row = list(dataclasses.astuple(data))
+        
+        batch = []
+        for data in data_list:
+            row = list(dataclasses.astuple(data))
+            if metadata:
                 device_id, genre = metadata.get(data.imgid, ('', ''))
                 row.extend([device_id, genre])
-                batch.append(row)
-        else:
-            placeholders = ', '.join(['%s'] * len(columns))
-            columns_str = ', '.join(columns)
-            sql = f"""
-        INSERT INTO `azurstat_data`.`{table}` ({columns_str})
-        VALUES ({placeholders})
-        """
-            batch = [dataclasses.astuple(data) for data in data_list]
+            batch.append(row)
 
         logger.info(sql)
         rows = cursor.executemany(sql, batch)
