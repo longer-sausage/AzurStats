@@ -65,7 +65,8 @@ async def upload_image(
     file: UploadFile = File(...),
     genre: str = Form(...),
     device_id: str = Form(...)
-):  """
+):
+    """
     接收 ALAS 客户端上传的截图
     """
     imgid = uuid.uuid4().hex[:16]
