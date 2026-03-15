@@ -49,7 +49,9 @@ def init_queue_db():
                     `imgid` CHAR(16) NOT NULL UNIQUE,
                     `path` VARCHAR(255) NOT NULL,
                     `date` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    `ua` VARCHAR(255) DEFAULT ''
+                    `device_id` VARCHAR(255) DEFAULT '',
+                    `genre` VARCHAR(255) DEFAULT '',
+                    `combat_count` INT DEFAULT 0
                 );
             """)
         conn.commit()
@@ -64,7 +66,8 @@ async def upload_image(
     request: Request,
     file: UploadFile = File(...),
     genre: str = Form(...),
-    device_id: str = Form(...)
+    device_id: str = Form(...),
+    combat_count: int = Form(...)
 ):
     """
     接收 ALAS 客户端上传的截图
@@ -92,8 +95,8 @@ async def upload_image(
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            sql = "INSERT INTO `azurstat`.`img_images` (imgid, path, device_id, genre) VALUES (%s, %s, %s, %s)"
-            cursor.execute(sql, (imgid, relative_path, device_id, genre))
+            sql = "INSERT INTO `azurstat`.`img_images` (imgid, path, device_id, genre, combat_count) VALUES (%s, %s, %s, %s, %s)"
+            cursor.execute(sql, (imgid, relative_path, device_id, genre, combat_count))
         conn.commit()
         logger.info(f"收到新图片上传: {imgid} ({genre})")
     except Exception as e:
@@ -228,7 +231,8 @@ def background_analysis_task():
                 # 分析完成后，执行自动清理
                 cleanup_parsed_images(db)
         except Exception as e:
-            logger.error(f"后台分析任务发生未捕获异常: {e}")
+            logger.error(f"后台分析任务发生异常: {e}")
+            os._exit(1)
             
         # 休眠 10 秒后再次检查（可根据服务器性能和实时性要求调整）
         time.sleep(10)

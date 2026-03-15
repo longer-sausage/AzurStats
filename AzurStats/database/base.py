@@ -25,6 +25,7 @@ class DataImage:
     path: str
     device_id: str = ''
     genre: str = ''
+    combat_count: int = 0
 
 
 class AzurStatsDatabase(ItemInfo, ResultOutput):
@@ -93,7 +94,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         Get list a batch of images to process
         """
         sql = f"""
-        SELECT a.imgid, a.path, a.device_id, a.genre
+        SELECT a.imgid, a.path, a.device_id, a.genre, a.combat_count
         FROM azurstat.img_images a
         LEFT JOIN azurstat_data.parse_records b ON a.imgid = b.imgid
         WHERE ISNULL(b.imgid)
@@ -177,7 +178,10 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         table = inflection.underscore(scene)
 
         if metadata:
-            columns.extend(['device_id', 'genre'])
+            if table == 'parse_records':
+                columns.extend(['device_id', 'genre'])
+            else:
+                columns.extend(['device_id', 'genre', 'combat_count'])
             
         placeholders = ', '.join(['%s'] * len(columns))
         columns_str = ', '.join(columns)
@@ -190,8 +194,11 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         for data in data_list:
             row = list(dataclasses.astuple(data))
             if metadata:
-                device_id, genre = metadata.get(data.imgid, ('', ''))
-                row.extend([device_id, genre])
+                device_id, genre, combat_count = metadata.get(data.imgid, ('', '', 0))
+                if table == 'parse_records':
+                    row.extend([device_id, genre])
+                else:
+                    row.extend([device_id, genre, combat_count])
             batch.append(row)
 
         logger.info(sql)
@@ -202,7 +209,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         metadata = {}
         if images is not None:
             for img in images:
-                metadata[img.imgid] = (img.device_id, img.genre)
+                metadata[img.imgid] = (img.device_id, img.genre, img.combat_count)
                 
         connection = pymysql.connect(**self.database_config)
         try:
