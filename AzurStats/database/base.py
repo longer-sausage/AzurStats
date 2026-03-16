@@ -53,14 +53,9 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         """
         Get the amount of images that haven't been parsed
         """
-        sql = f"""
+        sql = """
         SELECT COUNT(*)
-        FROM azurstat.img_images a
-        WHERE (
-            SELECT COUNT(*)
-            FROM azurstat_data.parse_records b
-            WHERE a.imgid = b.imgid
-        ) = 0
+        FROM azurstat.img_images
         """
         connection = pymysql.connect(**self.database_config)
         try:
@@ -94,23 +89,10 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         Get list a batch of images to process
         """
         sql = f"""
-        SELECT a.imgid, a.path, a.device_id, a.genre, a.combat_count
-        FROM azurstat.img_images a
-        LEFT JOIN azurstat_data.parse_records b ON a.imgid = b.imgid
-        WHERE ISNULL(b.imgid)
+        SELECT imgid, path, device_id, genre, combat_count
+        FROM azurstat.img_images
         LIMIT {AzurStatsDatabase.BATCH_SIZE}
         """
-        # sql = f"""
-        # SELECT imgid, path
-        # FROM azurstat.img_images a
-        # WHERE (
-        #     SELECT COUNT(*)
-        #     FROM azurstat_data.parse_records b
-        #     WHERE a.imgid = b.imgid
-        # ) = 0
-        # ORDER BY id ASC
-        # LIMIT {AzurStatsDatabase.BATCH_SIZE}
-        # """
         return self.query(sql, DataImage)
 
     def record_to_json(self, record: SelectedGrids, file: str = None) -> t.Dict:
@@ -178,10 +160,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         table = inflection.underscore(scene)
 
         if metadata:
-            if table == 'parse_records':
-                columns.extend(['device_id', 'genre'])
-            else:
-                columns.extend(['device_id', 'genre', 'combat_count'])
+            columns.extend(['device_id', 'genre', 'combat_count'])
             
         placeholders = ', '.join(['%s'] * len(columns))
         columns_str = ', '.join(columns)
@@ -195,10 +174,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
             row = list(dataclasses.astuple(data))
             if metadata:
                 device_id, genre, combat_count = metadata.get(data.imgid, ('', '', 0))
-                if table == 'parse_records':
-                    row.extend([device_id, genre])
-                else:
-                    row.extend([device_id, genre, combat_count])
+                row.extend([device_id, genre, combat_count])
             batch.append(row)
 
         logger.info(sql)
@@ -215,8 +191,35 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         try:
             with connection.cursor() as cursor:
                 for attr in azurstats.all_data_type:
+                    if attr == 'parse_records':
+                        continue
                     print(attr, len(getattr(azurstats, attr)))
                     self._insert_data(getattr(azurstats, attr), cursor=cursor, metadata=metadata)
+                connection.commit()
+        finally:
+            connection.close()
+
+    def delete_images(self, images: SelectedGrids):
+        if not images:
+            return
+        imgids = [img.imgid for img in images]
+        
+        # Delete files
+        for img in images:
+            abs_path = self.abspath(img)
+            if os.path.exists(abs_path):
+                try:
+                    os.remove(abs_path)
+                except Exception as e:
+                    logger.warning(f"无法删除文件 {abs_path}: {e}")
+                    
+        # Delete from DB
+        connection = pymysql.connect(**self.database_config)
+        try:
+            with connection.cursor() as cursor:
+                format_strings = ','.join(['%s'] * len(imgids))
+                sql = f"DELETE FROM azurstat.img_images WHERE imgid IN ({format_strings})"
+                cursor.execute(sql, tuple(imgids))
                 connection.commit()
         finally:
             connection.close()
@@ -227,11 +230,16 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         while 1:
             logger.hr(f'Execute {processed}/{total}', level=1)
             images = self.select_batch_images()
+            if not images:
+                break
             images_abs = [self.abspath(image) for image in images]
 
             # Parse
             azurstats = AzurStatsOpsi(images_abs)
             self.insert_azurstats(azurstats, images=images)
+            
+            # Delete parsed images
+            self.delete_images(images)
 
             processed += len(images)
             if processed >= total:

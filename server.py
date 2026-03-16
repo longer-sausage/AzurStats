@@ -4,6 +4,7 @@ import shutil
 import asyncio
 import threading
 import time
+import glob
 from datetime import datetime
 import pymysql
 
@@ -121,7 +122,7 @@ async def get_data(
     """
     # 限制允许查询的表，防止SQL注入
     allowed_tables = [
-        "parse_records", "research_projects", "research_items", 
+        "research_projects", "research_items", 
         "meowfficer_talents", "commission_items", "battle_items", "opsi_items"
     ]
     if table_name not in allowed_tables:
@@ -171,48 +172,6 @@ async def get_data(
     finally:
         conn.close()
 
-def cleanup_parsed_images(db_instance):
-    """
-    清理已经解析完毕的图片文件，并从 img_images 表中移除记录，保持队列整洁
-    """
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # 查找在 parse_records 中已经存在的图片（即已经分析过的）
-            sql = """
-            SELECT a.imgid, a.path 
-            FROM azurstat.img_images a
-            INNER JOIN azurstat_data.parse_records b ON a.imgid = b.imgid
-            """
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            
-            deleted_count = 0
-            for row in rows:
-                imgid, rel_path = row
-                abs_path = db_instance.abspath(rel_path)
-                
-                # 删除磁盘上的文件
-                if os.path.exists(abs_path):
-                    try:
-                        os.remove(abs_path)
-                        deleted_count += 1
-                    except Exception as e:
-                        logger.warning(f"无法删除文件 {abs_path}: {e}")
-                
-                # (可选) 从队列库中删除该记录，防止 img_images 表无限膨胀
-                # 如果你想在概览(Overview)中保留历史上传总数，请注释掉下面这两行
-                # del_sql = "DELETE FROM azurstat.img_images WHERE imgid = %s"
-                # cursor.execute(del_sql, (imgid,))
-                
-            # conn.commit()
-            if deleted_count > 0:
-                logger.info(f"清理阶段完成，删除了 {deleted_count} 个已解析的物理图片文件")
-    except Exception as e:
-        logger.error(f"清理任务异常: {e}")
-    finally:
-        conn.close()
-
 def background_analysis_task():
     """
     后台守护线程：不断轮询数据库进行解析，并在解析后清理文件
@@ -226,10 +185,9 @@ def background_analysis_task():
             if total > 0:
                 logger.info(f"检测到 {total} 张新截图，开始分析流程...")
                 # 调用项目原生的 update 批量处理所有未解析的图片
+                # db.update() 内部现在已经包含了清理文件的逻辑
                 db.update()
                 
-                # 分析完成后，执行自动清理
-                cleanup_parsed_images(db)
         except Exception as e:
             logger.error(f"后台分析任务发生异常: {e}")
             os._exit(1)
@@ -237,8 +195,22 @@ def background_analysis_task():
         # 休眠 10 秒后再次检查（可根据服务器性能和实时性要求调整）
         time.sleep(10)
 
+def cleanup_lock_files():
+    """
+    启动时清理项目目录下所有的 .lock 文件
+    """
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    lock_files = glob.glob(os.path.join(project_dir, "**", "*.lock"), recursive=True)
+    for lock_file in lock_files:
+        try:
+            os.remove(lock_file)
+            logger.info(f"Deleted lock file: {lock_file}")
+        except Exception as e:
+            logger.error(f"Failed to delete lock file {lock_file}: {e}")
+
 @app.on_event("startup")
 async def startup_event():
+    cleanup_lock_files()
     # 初始化队列数据库
     init_queue_db()
     # 启动后台守护线程进行分析
