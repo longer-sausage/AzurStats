@@ -75,15 +75,6 @@ class SceneWrapper(SceneBase):
             raise ImageUnknown('Image unknown')
 
 
-@dataclass
-class DataParseRecords:
-    imgid: str
-    server: str
-    scene: str
-    error: int
-    error_msg: str
-
-
 class AzurStats(SceneWrapper):
     def __init__(self, files):
         """
@@ -110,28 +101,8 @@ class AzurStats(SceneWrapper):
         logger.info(f'AzurStats is now parsing {len(files)} images')
         self.files = files
         self.all_data = []
-        self.all_record = []
 
         self.parse_scene()
-
-    def _add_record(self, data):
-        if isinstance(data, Exception):
-            data = DataParseRecords(
-                imgid=self.imgid,
-                server=self.server,
-                scene=data.__class__.__name__,
-                error=1,
-                error_msg=str(data)
-            )
-        else:
-            data = DataParseRecords(
-                imgid=self.imgid,
-                server=self.server,
-                scene=remove_prefix(self.last_data.__class__.__name__, 'Data'),
-                error=0,
-                error_msg=''
-            )
-        self.all_record.append(data)
 
     def _add_data(self, data):
         self.all_data += data
@@ -143,27 +114,22 @@ class AzurStats(SceneWrapper):
                 super().load_file(file)
                 super().extract_assets()
                 data = list(super().parse_scene())
-                self._add_record(self.last_data)
                 self._add_data(data)
             except (ImageError, FileNotFoundError) as e:
-                self._add_record(e)
+                logger.warning(f"Failed to parse {file}: {e}")
             except Exception as e:
-                self._add_record(ImageError(str(e)))
+                logger.error(f"Error parsing {file}: {e}")
 
     @cached_property
     def all_data_type(self):
         """
         Returns:
-            list[str]: Such as ['DataParseRecords', 'DataResearchProjects', 'DataResearchItems']
+            list[str]: Such as ['DataResearchProjects', 'DataResearchItems']
         """
         return [attr for attr in dir(self) if attr.startswith('Data')]
 
     def _filter_data(self, data_class):
         return [data for data in self.all_data if isinstance(data, data_class)]
-
-    @property
-    def DataParseRecords(self):
-        return self.all_record
 
     @cached_property
     def DataCommissionItems(self):
@@ -213,7 +179,5 @@ if __name__ == '__main__':
     Examples
     """
     az = AzurStats(r'./assets/test')
-    for d in az.DataParseRecords:
-        print(d)
     for d in az.DataResearchItems:
         print(d)

@@ -9,8 +9,6 @@ Backend of https://azur-stats.lyoko.io/
 ```python
 from AzurStats.azurstats import AzurStats
 az = AzurStats(r'./doc/research_queue_example.png')
-for d in az.DataParseRecords:
-    print(d)
 for d in az.DataResearchItems:
     print(d)
 ```

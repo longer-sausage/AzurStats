@@ -13,7 +13,6 @@ class DatabaseTools(AzurStatsDatabase):
     ALL_TABLES = [
         'research_items',
         'research_projects',
-        'parse_records',
         'meowfficer_talents',
         'commission_items',
     ]
@@ -155,13 +154,6 @@ class DatabaseTools(AzurStatsDatabase):
             """
             self.chuck_execute(sql, records)
 
-    def delete_scene_image_unknown(self):
-        DatabaseTools.ALL_TABLES, backup = ['parse_records'], DatabaseTools.ALL_TABLES
-        self.delete_record('parse_records', 'scene = "ImageUnknown"')
-        DatabaseTools.ALL_TABLES = backup
-
-
 if __name__ == '__main__':
     self = DatabaseTools()
     self.delete_unknown_templates('research_items')
-    # self.delete_record('parse_records', 'scene = "ResearchInvalid"')

@@ -191,8 +191,6 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         try:
             with connection.cursor() as cursor:
                 for attr in azurstats.all_data_type:
-                    if attr == 'parse_records':
-                        continue
                     print(attr, len(getattr(azurstats, attr)))
                     self._insert_data(getattr(azurstats, attr), cursor=cursor, metadata=metadata)
                 connection.commit()

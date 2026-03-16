@@ -9,24 +9,6 @@
 CREATE DATABASE IF NOT EXISTS `azurstat_data` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `azurstat_data`;
 
--- Table: `azurstat_data.parse_records`
-CREATE TABLE IF NOT EXISTS `parse_records`
-(
-    `id`        INT(11)      NOT NULL AUTO_INCREMENT,
-    `imgid`     CHAR(16)     NOT NULL COMMENT '图片uid' COLLATE 'utf8_general_ci',
-    `server`    CHAR(4)      NULL     DEFAULT NULL COMMENT '游戏服务器' COLLATE 'utf8_general_ci',
-    `scene`     VARCHAR(32)  NULL     DEFAULT NULL COMMENT '掉落场景' COLLATE 'utf8_general_ci',
-    `error`     TINYINT(4)   NOT NULL DEFAULT '0' COMMENT '是否出现错误',
-    `error_msg` VARCHAR(255) NULL     DEFAULT NULL COMMENT '错误信息' COLLATE 'utf8_general_ci',
-    PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `id` (`id`) USING BTREE,
-    UNIQUE INDEX `imgid` (`imgid`) USING BTREE,
-    INDEX `scene` (`scene`, `imgid`) USING BTREE
-)
-    COLLATE = 'utf8_general_ci'
-    ENGINE = InnoDB
-;
-
 -- Table: `azurstat_data.research_projects`
 CREATE TABLE IF NOT EXISTS `research_projects`
 (
