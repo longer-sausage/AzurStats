@@ -4,7 +4,8 @@ import os
 import typing as t
 
 import inflection
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 from AzurStats.azurstats import AzurStats, AzurStatsOpsi
 from AzurStats.config.config import CONFIG
@@ -39,10 +40,10 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
     def abspath(self, path):
         """
         Args:
-            path (str, DataImage): Such as `/imgs/2021/07/d91b7b6637c400ee.png`
+            path (str, DataImage): Such as /imgs/2021/07/d91b7b6637c400ee.png
 
         Returns:
-            str: Path to image, such as `F:/azurstats.lyoko.io/imgs/2021/07/d91b7b6637c400ee.png`
+            str: Path to image, such as F:/azurstats.lyoko.io/imgs/2021/07/d91b7b6637c400ee.png
         """
         if isinstance(path, DataImage):
             path = path.path
@@ -57,7 +58,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         SELECT COUNT(*)
         FROM azurstat.img_images
         """
-        connection = pymysql.connect(**self.database_config)
+        connection = psycopg2.connect(**self.database_config)
         try:
             with connection.cursor() as cursor:
                 cursor.execute(sql)
@@ -75,7 +76,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         Returns:
             SelectedGrids[data_class()]
         """
-        connection = pymysql.connect(**self.database_config)
+        connection = psycopg2.connect(**self.database_config)
         try:
             with connection.cursor() as cursor:
                 cursor.execute(sql)
@@ -98,7 +99,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
     def record_to_json(self, record: SelectedGrids, file: str = None) -> t.Dict:
         """
         Convert a SelectGrids object to json.
-        If `file`, write json into it.
+        If file, write json into it.
         """
         out = {}
         for index, data in enumerate(record):
@@ -112,7 +113,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
     def record_to_csv(self, record: SelectedGrids, file: str = None, encoding='utf-8') -> t.List[t.List[t.Any]]:
         """
         Convert a SelectGrids object to csv files.
-        If `file`, write csv into it.
+        If file, write csv into it.
         """
 
         def to_fields(row):
@@ -147,7 +148,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         return SelectedGrids(out)
 
     @staticmethod
-    def _insert_data(data_list: t.List, cursor: pymysql.connections.Cursor, metadata: dict = None):
+    def _insert_data(data_list: t.List, cursor: psycopg2.extensions.cursor, metadata: dict = None):
         # First row of data
         first = next(iter(data_list), None)
         if first is None:
@@ -165,7 +166,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
         placeholders = ', '.join(['%s'] * len(columns))
         columns_str = ', '.join(columns)
         sql = f"""
-        INSERT INTO `azurstat_data`.`{table}` ({columns_str})
+        INSERT INTO azurstat_data.{table} ({columns_str})
         VALUES ({placeholders})
         """
         
@@ -187,7 +188,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
             for img in images:
                 metadata[img.imgid] = (img.device_id, img.genre, img.combat_count)
                 
-        connection = pymysql.connect(**self.database_config)
+        connection = psycopg2.connect(**self.database_config)
         try:
             with connection.cursor() as cursor:
                 for attr in azurstats.all_data_type:
@@ -212,7 +213,7 @@ class AzurStatsDatabase(ItemInfo, ResultOutput):
                     logger.warning(f"无法删除文件 {abs_path}: {e}")
                     
         # Delete from DB
-        connection = pymysql.connect(**self.database_config)
+        connection = psycopg2.connect(**self.database_config)
         try:
             with connection.cursor() as cursor:
                 format_strings = ','.join(['%s'] * len(imgids))

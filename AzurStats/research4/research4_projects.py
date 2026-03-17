@@ -1,4 +1,5 @@
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 from AzurStats.classification.image_classification import ImageClassification
 from AzurStats.research4.utils import *
@@ -101,7 +102,7 @@ DATA_GROUP = {
 
 
 def get_data():
-    connection = pymysql.connect(**CONFIG['database'])
+    connection = psycopg2.connect(**CONFIG['database'])
     try:
         with connection.cursor() as cursor:
             # 7jntvgh is the client ID of admin
@@ -239,7 +240,7 @@ def check_name():
     """
     Print invalid OCR results in project name
     """
-    connection = pymysql.connect(**CONFIG['database'])
+    connection = psycopg2.connect(**CONFIG['database'])
     try:
         with connection.cursor() as cursor:
             sql = f"""

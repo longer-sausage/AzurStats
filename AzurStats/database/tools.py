@@ -2,7 +2,8 @@ import dataclasses
 import os
 import re
 
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 from AzurStats.database.base import AzurStatsDatabase
 from module.config.utils import iter_folder
@@ -28,7 +29,7 @@ class DatabaseTools(AzurStatsDatabase):
             int: Amount of affected rows
         """
         total = len(seq)
-        connection = pymysql.connect(**self.database_config)
+        connection = psycopg2.connect(**self.database_config)
         try:
             for pos in range(0, total, chunk_size):
                 logger.attr('Chunk', f'{pos}/{total}')
@@ -49,7 +50,7 @@ class DatabaseTools(AzurStatsDatabase):
             condition (str):
 
         Examples:
-            Delete all records with `item = "BlueprintMarcopolo"`:
+            Delete all records with item = "BlueprintMarcopolo":
                 self = DatabaseTools()
                 self.delete_record('research_items', 'item = "BlueprintMarcopolo"')
         """

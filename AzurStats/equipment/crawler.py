@@ -134,9 +134,10 @@ def translate_names(folder=ASSETS_FOLDER):
 
 
 def insert_data():
-    import pymysql
+    import psycopg2
+    import psycopg2.extras
     from AzurStats.config.config import CONFIG
-    connection = pymysql.connect(**CONFIG['database'])
+    connection = psycopg2.connect(**CONFIG['database'])
     data = [(equip['name'], f'Equipment{equip["rarity"]}', 'Equipment') for equip in JSON_DATA.values()]
     try:
         with connection.cursor() as cursor:

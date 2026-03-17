@@ -6,7 +6,8 @@ import threading
 import time
 import glob
 from datetime import datetime
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, Request, Query
@@ -29,30 +30,29 @@ os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
 def get_db_connection():
     # 注意：根据项目原逻辑，源数据库在 azurstat，因此连接时需切换或在SQL中显式指定
-    return pymysql.connect(**DB_CONFIG)
+    return psycopg2.connect(**DB_CONFIG)
 
 def get_dict_db_connection():
     # 返回使用 DictCursor 的连接，方便 API 返回 JSON
     config = DB_CONFIG.copy()
-    config['cursorclass'] = pymysql.cursors.DictCursor
-    return pymysql.connect(**config)
+    config['cursor_factory'] = psycopg2.extras.RealDictCursor
+    return psycopg2.connect(**config)
 
 def init_queue_db():
     """初始化用于接收图片的队列数据库和表"""
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("CREATE DATABASE IF NOT EXISTS `azurstat` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
-            cursor.execute("USE `azurstat`;")
+            cursor.execute("CREATE SCHEMA IF NOT EXISTS azurstat;")
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS `img_images` (
-                    `id` INT AUTO_INCREMENT PRIMARY KEY,
-                    `imgid` CHAR(16) NOT NULL UNIQUE,
-                    `path` VARCHAR(255) NOT NULL,
-                    `date` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    `device_id` VARCHAR(255) DEFAULT '',
-                    `genre` VARCHAR(255) DEFAULT '',
-                    `combat_count` INT DEFAULT 0
+                CREATE TABLE IF NOT EXISTS azurstat.img_images (
+                    id SERIAL PRIMARY KEY,
+                    imgid CHAR(16) NOT NULL UNIQUE,
+                    path VARCHAR(255) NOT NULL,
+                    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    device_id VARCHAR(255) DEFAULT '',
+                    genre VARCHAR(255) DEFAULT '',
+                    combat_count INT DEFAULT 0
                 );
             """)
         conn.commit()
@@ -96,7 +96,7 @@ async def upload_image(
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            sql = "INSERT INTO `azurstat`.`img_images` (imgid, path, device_id, genre, combat_count) VALUES (%s, %s, %s, %s, %s)"
+            sql = "INSERT INTO azurstat.img_images (imgid, path, device_id, genre, combat_count) VALUES (%s, %s, %s, %s, %s)"
             cursor.execute(sql, (imgid, relative_path, device_id, genre, combat_count))
         conn.commit()
         logger.info(f"收到新图片上传: {imgid} ({genre})")
@@ -131,7 +131,7 @@ async def get_data(
     conn = get_dict_db_connection()
     try:
         with conn.cursor() as cursor:
-            query = f"SELECT * FROM `azurstat_data`.`{table_name}` WHERE 1=1"
+            query = f"SELECT * FROM azurstat_data.{table_name} WHERE 1=1"
             params = []
             
             if device_id:
@@ -151,7 +151,7 @@ async def get_data(
             results = cursor.fetchall()
             
             # Count total records
-            count_query = f"SELECT COUNT(*) as total FROM `azurstat_data`.`{table_name}` WHERE 1=1"
+            count_query = f"SELECT COUNT(*) as total FROM azurstat_data.{table_name} WHERE 1=1"
             count_params = []
             if device_id:
                 count_query += " AND device_id = %s"

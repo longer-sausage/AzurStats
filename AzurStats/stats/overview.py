@@ -1,6 +1,7 @@
 from datetime import datetime
 
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 from AzurStats.config.config import CONFIG
 from AzurStats.database.base import AzurStatsDatabase
@@ -24,7 +25,7 @@ def human_format(num):
 
 
 def get_data():
-    connection = pymysql.connect(**CONFIG['Database'])
+    connection = psycopg2.connect(**CONFIG['Database'])
     try:
         with connection.cursor() as cursor:
             SQL = """
@@ -36,12 +37,12 @@ def get_data():
                 SELECT
                     DATE_FORMAT( @cdate := DATE_ADD( @cdate, INTERVAL - 1 HOUR ), '%Y-%m-%d %H:00:00' ) HOUR 
                 FROM
-                    ( SELECT @cdate := DATE_ADD( DATE_FORMAT( NOW( ), '%Y-%m-%d %H:00:00' ), INTERVAL + 1 HOUR ) FROM azurstat.`img_images` ) t0 
+                    ( SELECT @cdate := DATE_ADD( DATE_FORMAT( NOW( ), '%Y-%m-%d %H:00:00' ), INTERVAL + 1 HOUR ) FROM azurstat.img_images ) t0 
                     LIMIT 24 
                 ) t1
                 LEFT JOIN ( 
                     SELECT DATE_ADD( DATE_FORMAT( date, '%Y-%m-%d %H:00:00' ), INTERVAL + 1 HOUR ) HOUR 
-                    FROM azurstat.`img_images` WHERE date >= ( NOW( ) - INTERVAL 24 HOUR ) 
+                    FROM azurstat.img_images WHERE date >= ( NOW( ) - INTERVAL 24 HOUR ) 
                 ) t2 
             ON 
                 t1.HOUR = t2.HOUR 
@@ -54,7 +55,7 @@ def get_data():
             uploads_history_24h = cursor.fetchall()
             SQL = """
             SELECT COUNT(*) AS num 
-            FROM azurstat.`img_images` 
+            FROM azurstat.img_images 
             WHERE date < DATE_FORMAT(NOW(), '%Y-%m-%d %H:00:00') 
             """
             cursor.execute(SQL)

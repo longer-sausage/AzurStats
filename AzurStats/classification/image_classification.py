@@ -1,4 +1,5 @@
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 import module.config.server as server
 from AzurStats.utils.utils import *
@@ -75,9 +76,9 @@ COMMISSION_PERFECT = MultiServerButton(
 
 
 class ImageClassification:
-    SQL_SOURCE = 'azurstat.`img_images`'
+    SQL_SOURCE = 'azurstat.img_images'
     SQL_SOURCE_COLUMN = 'id, imgid, path'
-    SQL_TARGET = 'azurstat_data.`images`'
+    SQL_TARGET = 'azurstat_data.images'
     SQL_TARGET_COLUMN = 'id, imgid, path, valid, stats, server, error'
     SQL_WHERE = ''
     SQL_LIMIT = 100
@@ -93,7 +94,7 @@ class ImageClassification:
     def path_to_images(self, path):
         """
         Args:
-            path (str): Such as `/imgs/2021/07/d91b7b6637c400ee.png`
+            path (str): Such as /imgs/2021/07/d91b7b6637c400ee.png
 
         Returns:
             list: List of pillow images
@@ -176,7 +177,7 @@ class ImageClassification:
         return data_out
 
     def run(self):
-        connection = pymysql.connect(**CONFIG['database'])
+        connection = psycopg2.connect(**CONFIG['database'])
         try:
             with connection.cursor() as cursor:
                 sql = f"""
@@ -214,7 +215,7 @@ class ImageClassification:
                 2 for Temp rows for template extraction
                 3 for Unclassified items (in auto increased numbers)
         """
-        connection = pymysql.connect(**CONFIG['database'])
+        connection = psycopg2.connect(**CONFIG['database'])
         try:
             with connection.cursor() as cursor:
                 sql = f"""

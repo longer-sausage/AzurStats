@@ -1,4 +1,5 @@
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 from AzurStats.config.config import *
 from module.research.project import *
@@ -28,7 +29,7 @@ def get_data():
 
 
 def insert_data(data):
-    connection = pymysql.connect(**CONFIG['database'])
+    connection = psycopg2.connect(**CONFIG['database'])
     try:
         with connection.cursor() as cursor:
             sql = """

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 from AzurStats.research4.utils import *
 from AzurStats.utils.utils import *
@@ -29,7 +30,7 @@ class ItemGroup:
     def __init__(self):
         self.item_to_group1 = {}
         self.item_to_group2 = {}
-        connection = pymysql.connect(**CONFIG['database'])
+        connection = psycopg2.connect(**CONFIG['database'])
         try:
             with connection.cursor() as cursor:
                 sql = """
@@ -96,8 +97,8 @@ class ItemGroup:
         """
         Args:
             name (str):
-            lang (str): Such as `zh-CN`
-            lang_short (str): Such as `cn`
+            lang (str): Such as zh-CN
+            lang_short (str): Such as cn
 
         Returns:
             str: Translation, or original name if translation not found
@@ -235,7 +236,7 @@ class ItemStatsGenerator:
 
     def get_data(self):
         data = {}
-        connection = pymysql.connect(**CONFIG['database'])
+        connection = psycopg2.connect(**CONFIG['database'])
         try:
             with connection.cursor() as cursor:
                 for project in ['genre_duration', 'genre', 'duration', 'project']:

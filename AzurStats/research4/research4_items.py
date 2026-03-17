@@ -1,4 +1,5 @@
-import pymysql
+import psycopg2
+import psycopg2.extras
 
 from AzurStats.classification.image_classification import ImageClassification, MultiServerButton
 from AzurStats.research4.items_stats import ItemStatsGenerator
